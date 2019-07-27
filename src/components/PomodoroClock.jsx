@@ -18,20 +18,21 @@ class PomodoroClock extends Component {
         seconds: 0,
         intervalHandle: 0,
         breakOngoing: false,
-        displayTextBetweenSessions: ""
+        displayTextBetweenSessions: "",
+        loadingBarWidth: 100
     }
 
     startOrStopTimer() {
         this.setState({ timerIsRunning: !this.state.timerIsRunning });
         if (this.state.timerIsRunning) clearInterval(this.state.intervalHandle);
         else {
-            let handle = setInterval(this.countDownOneSecond, 100);
+            let handle = setInterval(this.countDownOneSecond, 1000);
             this.setState({ intervalHandle: handle });
         }
     }
 
     resetClock() {
-        this.setState({ breakLength: 5, breakLengthLeft: 5, sessionLength: 25, sessionLengthLeft: 25, seconds: 0, timerIsRunning: false, breakOngoing: false });
+        this.setState({ breakLength: 5, breakLengthLeft: 5, sessionLength: 25, sessionLengthLeft: 25, seconds: 0, timerIsRunning: false, breakOngoing: false, loadingBarWidth: 100 });
         clearInterval(this.state.intervalHandle);
         document.getElementById("beep").pause();
         document.getElementById("beep").currentTime = 0;
@@ -46,7 +47,6 @@ class PomodoroClock extends Component {
             this.setState(prevState => ({
                 [timerName]: prevState[timerName] + timeAmount,
                 [timerNameLeft]: prevState[timerName] + timeAmount,
-                seconds: 0
             }));
         }
     }
@@ -77,6 +77,12 @@ class PomodoroClock extends Component {
         // Seconds decrease independently of break or session status
         else
             this.setState(prevState => ({ seconds: prevState.seconds - 1 }));
+
+        // calculate and set new loading bar width
+        const secondsLeft = (this.state.breakOngoing ? this.state.breakLengthLeft : this.state.sessionLengthLeft) * 60 + this.state.seconds;
+        const initialTimeInSeconds = (this.state.breakOngoing ? this.state.breakLength : this.state.sessionLength) * 60;
+        const loadingBarWidth = (secondsLeft / initialTimeInSeconds) * 100;
+        this.setState({ loadingBarWidth });
     }
 
     render() {
@@ -86,21 +92,43 @@ class PomodoroClock extends Component {
         const formattedMinutes = ("0" + currentActiveTimerLeft).slice(-2);
         let displayText = formattedMinutes + ":" + formattedSeconds;
 
+        let startStopButtonStyles = this.state.timerIsRunning ? "fas fa-pause" : "fas fa-play";
+
         return (
-            <main>
-                <p id="break-label">Break Length</p>
-                <p id="break-length">{this.state.breakLength}</p>
-                <button id="break-increment" onClick={() => { this.updateTimerSetting("breakLength", 1) }}>+</button>
-                <button id="break-decrement" onClick={() => { this.updateTimerSetting("breakLength", -1) }}>-</button>
-                <p id="session-label">Session Length</p>
-                <p id="session-length">{this.state.sessionLength}</p>
-                <button id="session-increment" onClick={() => { this.updateTimerSetting("sessionLength", 1) }}>+</button>
-                <button id="session-decrement" onClick={() => { this.updateTimerSetting("sessionLength", -1) }}>-</button>
-                <p id="timer-label">{this.state.breakOngoing ? "BREAK" : "SESSION"}</p>
-                <p id="time-left">{displayText}</p>
-                <button id="start_stop" onClick={this.startOrStopTimer}>Start/Stop</button>
-                <button id="reset" onClick={this.resetClock}>Reset</button>
-                <audio id="beep" preload="auto" src="https://goo.gl/65cBl1"></audio>
+            <main id="main" className="flex-column-h-center">
+                <div className="flex-column-h-center" id="clock-container">
+                    <h1 id="main-heading" className="text-center text-muted"><span className="far fa-clock"></span> Pomodoro Clock</h1>
+                    <div id="time-left-label-container">
+                        <p id="timer-label" className="text-muted text-spaced">{this.state.breakOngoing ? "BREAK" : "SESSION"}</p>
+                        <p id="time-left" className="text-center">{displayText}</p>
+                    </div>
+                    <div>
+                        <button id="start_stop" className="btn" onClick={this.startOrStopTimer}><span className={startStopButtonStyles}></span></button>
+                        <button id="reset" className="btn" onClick={this.resetClock}><span className="fas fa-stop"></span></button>
+                    </div>
+                    <div className="loading-bar-bg">
+                        <div className="loading-bar" style={{ width: this.state.loadingBarWidth + "%" }}></div>
+                    </div>
+                    <div id="length-settings-group-container">
+                        <div className="length-settings-group flex-column-h-center">
+                            <p id="break-label" className="text-muted text-spaced">BREAK</p>
+                            <p id="break-length" className="settings-number">{this.state.breakLength}</p>
+                            <div>
+                                <button disabled={this.state.timerIsRunning} id="break-increment" className="btn" onClick={() => { this.updateTimerSetting("breakLength", 1) }}><span className="fas fa-plus"></span></button>
+                                <button disabled={this.state.timerIsRunning} id="break-decrement" className="btn" onClick={() => { this.updateTimerSetting("breakLength", -1) }}><span className="fas fa-minus"></span></button>
+                            </div>
+                        </div>
+                        <div className="length-settings-group flex-column-h-center">
+                            <p id="session-label" className="text-muted text-spaced">SESSION</p>
+                            <p id="session-length" className="settings-number">{this.state.sessionLength}</p>
+                            <div>
+                                <button disabled={this.state.timerIsRunning} id="session-increment" className="btn" onClick={() => { this.updateTimerSetting("sessionLength", 1) }}><span className="fas fa-plus"></span></button>
+                                <button disabled={this.state.timerIsRunning} id="session-decrement" className="btn" onClick={() => { this.updateTimerSetting("sessionLength", -1) }}><span className="fas fa-minus"></span></button>
+                            </div>
+                        </div>
+                    </div>
+                    <audio id="beep" preload="auto" src="https://goo.gl/65cBl1"></audio>
+                </div>
             </main>
         );
     }
